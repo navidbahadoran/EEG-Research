@@ -1,6 +1,13 @@
 from __future__ import annotations
 import numpy as np
-from scipy.special import iv
+# Prefer scaled modified Bessel I (ive). Fallback to exp-scaled iv if ive is unavailable.
+try:
+    from scipy.special import iv, ive
+except ImportError:
+    from scipy.special import iv
+    def ive(nu, x):
+        # scaled I_v(x) = exp(-x) * I_v(x)
+        return iv(nu, x) * np.exp(-x)
 
 def row_normalize(X: np.ndarray, eps: float = 1e-8) -> np.ndarray:
     norms = np.linalg.norm(X, axis=1, keepdims=True) + eps
@@ -36,7 +43,10 @@ def spherical_kmeans(Y: np.ndarray, K: int, iters: int = 30, seed: int = 0):
 
 # vMF helpers
 def A_p(kappa: float, p: int) -> float:
-    """Stable A_p(kappa) using piecewise approximations to avoid overflow/underflow."""
+    """
+    Stable A_p(kappa) = I_{nu+1}(kappa)/I_{nu}(kappa), nu=p/2-1
+    Uses scaled Bessel ive(...) to avoid overflow for moderate/large kappa.
+    """
     if kappa <= 1e-6:
         # first-order series around 0
         return float(kappa / (p / 2.0))
