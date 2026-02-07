@@ -1,115 +1,96 @@
-"""vmf_npz.py
-
-Utilities to work with vMF **time series** stored in `.npz` files.
-
-The goal is to standardize the representation of Z_{it} so it can be
-plugged into the model as part of X_{it} (covariates) or used for
-prediction of traits (p_factor, attention, etc.).
-
-We try to be robust to unknown key names inside the .npz by:
-  - inspecting arrays in the file
-  - preferring a 2D array with shape (T, K) or (K, T)
-  - otherwise raising a clear error listing available keys/shapes.
-"""
-
+# =========================
+# vmf_npz.py
+# =========================
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Optional, Dict, Any, Tuple
+
 import numpy as np
 
+
 @dataclass
-class VmfSeries:
-    """Standardized vMF time series."""
-    Z: np.ndarray           # (T, K) posterior probs or features
-    meta: Dict[str, Any]    # other arrays/values in npz
+class VmfRecord:
+    """Container for one (subject, task) vMF time series + metadata."""
+    P: np.ndarray              # shape (T, K)
+    subject: str
+    task: str
+    sfreq: Optional[float]
+    ch_names: Optional[np.ndarray]
+    mus_fixed: Optional[np.ndarray]  # shape (K, 32) typically
+    filename: str
 
-def _pick_time_by_k(arr: np.ndarray, K: Optional[int]) -> Optional[np.ndarray]:
-    if arr.ndim != 2:
-        return None
-    T0, T1 = arr.shape
-    # if K is known, use it
-    if K is not None:
-        if T1 == K:
-            return arr
-        if T0 == K:
-            return arr.T
-    # otherwise, choose whichever dimension is "small" (<=64) as K
-    if T1 <= 64 and T0 > T1:
-        return arr
-    if T0 <= 64 and T1 > T0:
-        return arr.T
-    return None
 
-def load_vmf_npz(npz_path: str | Path, K: Optional[int] = None) -> VmfSeries:
-    p = Path(npz_path)
-    if not p.exists():
-        raise FileNotFoundError(f"vMF npz not found: {p}")
-    data = np.load(p, allow_pickle=True)
-    meta: Dict[str, Any] = {k: data[k] for k in data.files}
+def _to_py_scalar(x: Any) -> Any:
+    """Safely convert numpy scalar/0-d array to python scalar."""
+    if isinstance(x, np.ndarray) and x.shape == ():
+        return x.item()
+    if hasattr(x, "item") and not isinstance(x, (list, tuple, dict, np.ndarray)):
+        # numpy scalar
+        try:
+            return x.item()
+        except Exception:
+            return x
+    return x
 
-    # Try preferred keys first
-    preferred = [
-        "probabilities", "probs", "posterior", "posteriors", "gamma",
-        "responsibilities", "resp", "Z", "z"
-    ]
-    for k in preferred:
-        if k in meta:
-            cand = _pick_time_by_k(np.asarray(meta[k]), K)
-            if cand is not None:
-                return VmfSeries(Z=cand.astype(float), meta=meta)
 
-    # Otherwise search all arrays
-    for k, v in meta.items():
-        cand = _pick_time_by_k(np.asarray(v), K)
-        if cand is not None:
-            return VmfSeries(Z=cand.astype(float), meta=meta)
-
-    shapes = {k: np.asarray(meta[k]).shape for k in meta.keys()}
-    raise ValueError(
-        "Could not infer a (T,K) vMF time series from the npz. " 
-        f"Available keys/shapes: {shapes}. "
-        "If you know K, pass K=... to load_vmf_npz."
-    )
-
-def vmf_dynamic_features(Z: np.ndarray, eps: float = 1e-12) -> Dict[str, float]:
-    """Compute simple, interpretable dynamic features from (T,K) posterior probs.
-
-    These are designed for **trait prediction** (attention, p_factor) and for
-    later inclusion as covariates in the EEG dynamic model.
+def load_vmf_npz(npz_path: Path, K: int) -> VmfRecord:
     """
-    Z = np.asarray(Z, float)
-    if Z.ndim != 2:
-        raise ValueError(f"Z must be 2D (T,K); got {Z.shape}")
-    T, K = Z.shape
-    # Normalize just in case
-    row_sum = Z.sum(axis=1, keepdims=True)
-    row_sum[row_sum == 0] = 1.0
-    P = Z / row_sum
+    Load a vMF npz file that contains keys:
+      - P: (T, K) posterior probabilities
+      - kappa: (K,)
+      - logalpha: (K,)
+      - mus_fixed: (K, 32)
+      - subject: scalar
+      - task: scalar
+      - sfreq: scalar
+      - ch_names: (32,)
+      - template_path: scalar
+    """
+    if not npz_path.exists():
+        raise FileNotFoundError(f"vMF .npz not found: {npz_path}")
 
-    # Occupancy
-    occ = P.mean(axis=0)  # (K,)
-    # Entropy over time
-    Ht = -(P * np.log(P + eps)).sum(axis=1)  # (T,)
-    # Switching and volatility
-    hard = P.argmax(axis=1)
-    switches = float(np.mean(hard[1:] != hard[:-1])) if T > 1 else 0.0
-    vol = float(np.mean(np.linalg.norm(P[1:] - P[:-1], axis=1))) if T > 1 else 0.0
+    d = np.load(npz_path, allow_pickle=True)
 
-    feats: Dict[str, float] = {
-        "T": float(T),
-        "K": float(K),
-        "switch_rate": switches,
-        "volatility": vol,
-        "entropy_mean": float(Ht.mean()),
-        "entropy_std": float(Ht.std(ddof=0)),
-    }
-    for k in range(K):
-        feats[f"occ_{k}"] = float(occ[k])
-    return feats
+    if "P" not in d.files:
+        raise KeyError(f"Expected key 'P' in {npz_path.name}, found: {d.files}")
 
-def downsample_Z(Z: np.ndarray, step: int) -> np.ndarray:
-    """Downsample Z by taking every `step`-th time point."""
-    if step <= 1:
-        return Z
-    return np.asarray(Z)[::step]
+    P = d["P"]
+    if P.ndim != 2:
+        raise ValueError(f"'P' must be 2D (T,K). Got shape {P.shape} in {npz_path.name}")
+
+    # Ensure shape is (T, K)
+    if P.shape[1] != K and P.shape[0] == K:
+        P = P.T
+
+    if P.shape[1] != K:
+        raise ValueError(
+            f"Expected P to have K={K} columns. Got shape {P.shape} in {npz_path.name}"
+        )
+
+    # Basic sanity checks (non-fatal but helpful)
+    if np.nanmin(P) < -1e-8 or np.nanmax(P) > 1 + 1e-8:
+        raise ValueError(f"P has values outside [0,1] in {npz_path.name}")
+
+    # Sometimes probabilities don't sum exactly to 1 due to float error; allow tolerance
+    row_sums = P.sum(axis=1)
+    if not np.allclose(row_sums, 1.0, atol=1e-3, rtol=0):
+        # Not fatal, but warn via print
+        print(f"[WARN] P rows not summing to 1 (tolerance 1e-3) in {npz_path.name}")
+
+    subject = str(_to_py_scalar(d["subject"])) if "subject" in d.files else "NA"
+    task = str(_to_py_scalar(d["task"])) if "task" in d.files else "NA"
+
+    sfreq = float(_to_py_scalar(d["sfreq"])) if "sfreq" in d.files else None
+    ch_names = d["ch_names"] if "ch_names" in d.files else None
+    mus_fixed = d["mus_fixed"] if "mus_fixed" in d.files else None
+
+    return VmfRecord(
+        P=P.astype(float),
+        subject=subject,
+        task=task,
+        sfreq=sfreq,
+        ch_names=ch_names,
+        mus_fixed=mus_fixed,
+        filename=npz_path.name,
+    )

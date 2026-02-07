@@ -1,39 +1,28 @@
+# =========================
 # config.py
-from __future__ import annotations
-from dataclasses import dataclass
+# =========================
 from pathlib import Path
-from typing import Optional
 
-@dataclass
-class Paths:
-    """Project paths. Put your data under ./data."""
-    project_root: Path
-    data_dir: Path
-    vmf_npz_dir: Path
-    eeg_raw_dir: Path
+# Folder containing BOTH:
+#   - all vMF .npz files
+#   - vmf_fixedmus_summary_K7.csv
+DATA_DIR = Path(
+    r"D:/Navid/FSU/OneDrive - Florida State University/FSU/Courses/2025-2026/Spring/"
+    r"Sahar Research/EEG Data/data_for_navid"
+)
 
-    @staticmethod
-    def default(project_root: Optional[Path] = None) -> "Paths":
-        root = project_root or Path(__file__).resolve().parent
-        data = root / "data"
-        return Paths(
-            project_root=root,
-            data_dir=data,
-            vmf_npz_dir=data / "vmf_npz",
-            eeg_raw_dir=data / "eeg_raw",
-        )
+CSV_NAME = "vmf_fixedmus_summary_K7.csv"
+CSV_PATH = DATA_DIR / CSV_NAME
 
-@dataclass
-class ModelConfig:
-    """Core model configuration."""
-    # VAR lag order for EEG model
-    L: int = 1
+# vMF mixture size
+VMF_K = 7
 
-    # Dimensions for latent factor blocks (used later)
-    r_f: int = 2  # interactive effects factors f_t
-    r_g: int = 1  # slope factors g_t
-    r_h: int = 1  # propagation factors h_t
+# Output folder (created automatically)
+OUTPUT_DIR = Path("outputs")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Regularization for ridge baselines
-    ridge: float = 1e-2
+RANDOM_SEED = 123
+N_FOLDS = 5
 
+# If true: use P[:, :K-1] when directly using P as regressors (simplex collinearity fix).
+DROP_LAST_PROB_COL = True

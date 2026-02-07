@@ -1,63 +1,128 @@
-"""vmf_dataset.py
-
-Build a clean dataset from:
-  - the summary CSV (metadata + traits + npz pointer)
-  - local `.npz` files (vMF time series)
-
-Output:
-  - a pandas DataFrame with one row per (subject, task) and extracted features
-  - optional aggregation to one row per subject.
-"""
-
+# =========================
+# vmf_dataset.py
+# =========================
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 import pandas as pd
 
-from vmf_npz import load_vmf_npz, vmf_dynamic_features
-from config import Paths
+from config import DATA_DIR, CSV_PATH, VMF_K
+from vmf_npz import load_vmf_npz, VmfRecord
+from vmf_features import extract_vmf_features_from_P
 
-@dataclass
-class VmfRow:
-    subject_ID: str
-    task: str
-    npz_path: Path
 
-def _local_npz_path_from_csv(probabilities_file: str, vmf_npz_dir: Path) -> Path:
-    # Use filename only (robust across machines)
-    name = Path(probabilities_file).name
-    return vmf_npz_dir / name
+TARGET_COLS_DEFAULT = ["p_factor", "attention", "internalizing", "externalizing"]
 
-def build_vmf_feature_table(csv_path: str | Path, paths: Optional[Paths] = None, K: Optional[int] = None) -> pd.DataFrame:
-    paths = paths or Paths.default()
-    csv_path = Path(csv_path)
+
+def _filename_from_csv_path(p: str) -> str:
+    """CSV stores absolute paths; we only need the filename."""
+    try:
+        return Path(p).name
+    except Exception:
+        # fallback: split by slash/backslash
+        return str(p).replace("\\", "/").split("/")[-1]
+
+
+def build_vmf_feature_table(
+    csv_path: Path = CSV_PATH,
+    vmf_dir: Path = DATA_DIR,
+    K: int = VMF_K,
+    targets: Optional[List[str]] = None,
+    *,
+    stride: int = 1,
+    max_T: Optional[int] = None,
+) -> pd.DataFrame:
+    """
+    Returns a table with one row per (subject, task) with extracted features + targets.
+
+    Parameters
+    ----------
+    stride : int
+        Subsample time axis for speed. (e.g., stride=10 uses every 10th time point)
+    max_T : Optional[int]
+        Truncate long series (optional).
+    """
+    if targets is None:
+        targets = TARGET_COLS_DEFAULT
+
     df = pd.read_csv(csv_path)
 
+    required = ["probabilities_file"] + [c for c in targets if c in df.columns]
+    if "probabilities_file" not in df.columns:
+        raise KeyError("CSV must contain column 'probabilities_file'.")
+
     rows = []
-    missing = 0
+    missing_files = 0
 
     for _, r in df.iterrows():
-        local = _local_npz_path_from_csv(str(r["probabilities_file"]), paths.vmf_npz_dir)
-        if not local.exists():
-            missing += 1
+        fname = _filename_from_csv_path(r["probabilities_file"])
+        npz_path = vmf_dir / fname
+
+        try:
+            rec: VmfRecord = load_vmf_npz(npz_path, K=K)
+        except FileNotFoundError:
+            missing_files += 1
             continue
-        series = load_vmf_npz(local, K=K)
-        feats = vmf_dynamic_features(series.Z)
-        out = {**r.to_dict(), **feats}
-        out["local_npz"] = str(local)
-        rows.append(out)
 
-    out_df = pd.DataFrame(rows)
-    if missing > 0:
-        out_df.attrs["missing_npz"] = missing
-    return out_df
+        feats = extract_vmf_features_from_P(rec.P, stride=stride, max_T=max_T)
 
-def aggregate_subject_level(df_task: pd.DataFrame, outcomes=("p_factor","attention","internalizing","externalizing")) -> pd.DataFrame:
-    """Aggregate (subject, task) rows to subject-level by averaging feature columns across tasks."""
-    # Keep first outcome values per subject (usually identical across tasks); average features across tasks
-    feature_cols = [c for c in df_task.columns if c.startswith("occ_") or c in ("switch_rate","volatility","entropy_mean","entropy_std")]
-    meta_cols = ["subject_ID","age","sex","handedness"]
-    agg = df_task.groupby("subject_ID").agg({**{c:"mean" for c in feature_cols}, **{c:"first" for c in outcomes if c in df_task.columns}, **{c:"first" for c in meta_cols if c in df_task.columns}})
-    agg = agg.reset_index()
-    return agg
+        row = {
+            "subject": rec.subject,
+            "task": rec.task,
+            "filename": rec.filename,
+        }
+        row.update(feats)
+
+        # Attach targets (many are subject-level but repeated per task; that's ok)
+        for c in targets:
+            if c in df.columns:
+                row[c] = r[c]
+
+        rows.append(row)
+
+    out = pd.DataFrame(rows)
+    if missing_files > 0:
+        print(f"[WARN] Missing {missing_files} .npz files (not found in {vmf_dir})")
+
+    if out.empty:
+        raise RuntimeError("No vMF records loaded. Check DATA_DIR and CSV_PATH.")
+
+    return out
+
+
+def aggregate_to_subject_level(
+    task_df: pd.DataFrame,
+    *,
+    targets: Optional[List[str]] = None,
+) -> pd.DataFrame:
+    """
+    Aggregate (subject, task) rows into one row per subject.
+    Features are averaged across tasks.
+    Targets are taken as the first non-missing value within subject.
+    """
+    if targets is None:
+        targets = TARGET_COLS_DEFAULT
+
+    # Identify feature columns: numeric, excluding targets
+    exclude = {"subject", "task", "filename"} | set(targets)
+    feat_cols = [c for c in task_df.columns if c not in exclude and pd.api.types.is_numeric_dtype(task_df[c])]
+
+    def first_non_missing(s: pd.Series):
+        s2 = s.dropna()
+        return s2.iloc[0] if len(s2) else np.nan
+
+    agg_dict = {c: "mean" for c in feat_cols}
+    for t in targets:
+        if t in task_df.columns:
+            agg_dict[t] = first_non_missing
+
+    subj = (
+        task_df
+        .groupby("subject", as_index=False)
+        .agg(agg_dict)
+    )
+
+    return subj
