@@ -1,37 +1,39 @@
 # config.py
 from __future__ import annotations
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
-# vMF / IFE configs
-K_VMF = 4
-RANK_GRID = [1, 2, 3]
+@dataclass
+class Paths:
+    """Project paths. Put your data under ./data."""
+    project_root: Path
+    data_dir: Path
+    vmf_npz_dir: Path
+    eeg_raw_dir: Path
 
-# Axis-1 order for sessions in clean_EC.npy
-SESSION_NAMES = ["day1_morning", "day1_afternoon", "day2_morning", "day2_afternoon"]
+    @staticmethod
+    def default(project_root: Optional[Path] = None) -> "Paths":
+        root = project_root or Path(__file__).resolve().parent
+        data = root / "data"
+        return Paths(
+            project_root=root,
+            data_dir=data,
+            vmf_npz_dir=data / "vmf_npz",
+            eeg_raw_dir=data / "eeg_raw",
+        )
 
-# Subject metadata for clean_EC.npy (index-aligned)
-# tuple: (label, male=1/female=0, age_years)
-SUBJECT_META = [
-    ("AM", 0, 24),
-    ("CL", 0, 23),
-    ("CQ", 1, 26),
-    ("DB", 1, 22),
-    ("DC", 1, 20),
-    ("DL", 1, 23),
-    ("ErL", 1, 22),
-    ("EvL", 0, 20),
-    ("HZ", 1, 23),
-    ("KM", 0, 24),
-    ("LS", 0, 21),
-    ("TL", 1, 23),
-]
+@dataclass
+class ModelConfig:
+    """Core model configuration."""
+    # VAR lag order for EEG model
+    L: int = 1
 
-# Files for the extra CSV subject (same order as SESSION_NAMES)
-CSV_SUBJECT_FILES = [
-    "subject_0_day1_morning.csv",
-    "subject_0_day1_afternoon.csv",
-    "subject_0_day2_morning.csv",
-    "subject_0_day2_afternoon.csv",
-]
+    # Dimensions for latent factor blocks (used later)
+    r_f: int = 2  # interactive effects factors f_t
+    r_g: int = 1  # slope factors g_t
+    r_h: int = 1  # propagation factors h_t
 
-# Metadata for the extra (CSV) subject — edit to the true values if needed
-EXTRA_SUBJECT_META = ("S_extra", 1, 23)  # (label, male=1/0, age)
+    # Regularization for ridge baselines
+    ridge: float = 1e-2
+
