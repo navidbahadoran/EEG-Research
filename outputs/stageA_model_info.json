@@ -1,0 +1,13 @@
+{
+  "features_csv": "outputs\\vmf_subject_features.csv",
+  "feature_cols_count": 17,
+  "targets_used": [
+    "attention",
+    "p_factor",
+    "internalizing",
+    "externalizing"
+  ],
+  "n_folds": 5,
+  "ridge_alpha": 10.0,
+  "seed": 123
+}
