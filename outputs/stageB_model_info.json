@@ -1,7 +1,0 @@
-{
-  "model": "ridge_VAR1_baseline",
-  "alpha": 10.0,
-  "train_frac": 0.7,
-  "feature_dim": 160,
-  "notes": "Baseline Stage B: predicts window-level EEG feature vectors from one lag."
-}
