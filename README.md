@@ -44,6 +44,7 @@ All data live outside the repository and are referenced through aliases in confi
 
 ## 3. Repository Structure
 
+```text
 .
 ├── README.md
 ├── config.py
@@ -73,6 +74,7 @@ All data live outside the repository and are referenced through aliases in confi
 │   └── stageB_predict_varx.py
 │
 └── outputs/
+```
 
 ---
 
