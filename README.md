@@ -1,265 +1,119 @@
-# Dynamic EEG Modeling  
-## Stage A: vMF Time-Series Analysis (Before Raw EEG)
+# Dynamic EEG Modeling with Panel VAR and Latent Factors
 
----
-
-## 1. What is this project?
-
-This repository is part of a larger research program on **dynamic EEG modeling** that combines ideas from:
+This repository implements a clean, end-to-end research pipeline for modeling EEG dynamics using:
 
 - time-series analysis  
-- panel data econometrics  
+- panel vector autoregressions (PVAR)  
 - latent factor models  
-- neuroscience  
+- directional EEG representations (von Mises–Fisher, vMF)
 
-The **full project** aims to model multichannel EEG signals using **panel vector autoregressions (PVARs)** with:
-- subject heterogeneity  
-- time-varying dynamics  
-- latent brain states  
-- covariates derived from EEG structure  
-
-This repository currently implements **Stage A**, which is a **self-contained mini-project** and a foundation for later stages.
+The project is designed as a teaching-quality research codebase, progressing from interpretable vMF-only analysis (Stage A) to a full dynamic PVAR model with heterogeneous and time-varying effects (Stage B).
 
 ---
 
-## 2. What is Stage A?
+## 1. Scientific Objective
 
-### Stage A = vMF-only analysis (no raw EEG amplitudes)
+We model multichannel EEG data using the dynamic system
 
-In Stage A, we **do not use raw EEG signals** (voltages, bandpower, etc.).
+y_it = A_it y_i,t-1 + B_it X_it + Λ_i f_t + u_it,
 
-Instead, we start from **directional EEG representations** produced by a  
-**von Mises–Fisher (vMF) mixture model** applied to windowed EEG data.
+where:
 
-Each subject has a **vMF posterior probability time series** that describes how
-latent EEG states evolve over time.
+- y_it ∈ R^G is window-level multichannel EEG features  
+- A_it ∈ R^{G×G} governs time-varying propagation  
+- X_it are observed covariates (currently vMF features Z_it)  
+- B_it are time-varying covariate slopes  
+- f_t are latent common brain-state factors  
+- Λ_i are subject-specific factor loadings  
+- u_it is idiosyncratic noise  
 
-### Stage A as a mini-project
-
-Stage A is designed as a **warm-up research project** whose goals are:
-
-1. Learn how to work with **multivariate time series** derived from EEG  
-2. Build intuition about **latent EEG state dynamics**  
-3. Engineer **interpretable dynamic features**  
-4. Perform **proper, leakage-free prediction**  
-5. Evaluate predictive performance rigorously  
-
-Stage A stands on its own and is suitable for:
-- undergraduate research
-- posters or short reports
-- validation of EEG representations
-
-Nothing in Stage A is throwaway.
+This structure allows subject heterogeneity, regime changes, low-rank interpretability, and honest out-of-sample prediction.
 
 ---
 
-## 3. Conceptual model behind Stage A
+## 2. Data Layout (Public-Safe)
 
-For each subject \( i \) and time window \( t \):
+All data live outside the repository and are referenced through aliases in config.py.
 
-- We observe a **vMF posterior probability vector**
-  \[
-  Z_{it} = (P_{it,1}, \dots, P_{it,K}) \in \Delta^{K-1}
-  \]
-- Here, \(K = 7\) latent vMF states  
-- \(Z_{it}\) evolves over time and reflects changing latent brain configurations  
-
-### What we do with \(Z_{it}\)
-
-1. Treat \(Z_{it}\) as a **time series**  
-2. Extract **dynamic features**:
-   - entropy (state uncertainty)  
-   - switching rate  
-   - volatility  
-   - state occupancy  
-   - transition structure  
-3. Aggregate these features to the **subject level**  
-4. Use them to **predict subject-level outcomes** using cross-validation  
-
-This corresponds to building and validating the **covariate component** of the
-full EEG model.
-
----
-
-## 4. Data assumptions (Stage A)
-
-All required data live in a single directory, referred to throughout this README as:
-
-```
 <VMF_DATA_DIR>/
-```
-
-This directory must contain:
-
-1. **vMF `.npz` files** (one per subject × task/session)  
-2. A CSV file named:
-   ```
-   vmf_fixedmus_summary_K7.csv
-   ```
-
-Actual local paths are defined in `config.py` and are **not exposed** in this public repository.
+├── raw/
+├── vMF/
+└── vmf_fixedmus_summary_K7.csv
 
 ---
 
-### 4.1 vMF `.npz` file contents
+## 3. Repository Structure
 
-Each `.npz` file contains:
-
-| Key | Description |
-|----|-------------|
-| `P` | Array `(T, K)` of vMF posterior probabilities |
-| `kappa` | Concentration parameters |
-| `logalpha` | Mixture weights |
-| `mus_fixed` | Component templates over EEG channels |
-| `subject` | Subject identifier |
-| `task` | Task or session identifier |
-| `sfreq` | Sampling frequency |
-| `ch_names` | EEG channel names |
-
-Important:
-- `P` is the **main object** used in Stage A  
-- Each row of `P` sums to 1  
-- `T` can be large (tens of thousands of time points)
-
----
-
-### 4.2 CSV file contents
-
-`vmf_fixedmus_summary_K7.csv` contains metadata and labels:
-
-| Column | Meaning |
-|------|--------|
-| `probabilities_file` | Path to the `.npz` file |
-| `attention` | Subject-level attention score |
-| `p_factor` | General psychopathology factor |
-| `internalizing` | (optional) |
-| `externalizing` | (optional) |
-
-Paths may be machine-specific; **only the filename is used**.
-
----
-
-## 5. Repository structure (Stage A)
-
-```
 .
-├── run_vmf_pipeline.py          # Stage A feature engineering
-├── stageA_predict.py            # Stage A prediction + evaluation
-├── config.py                    # configuration and constants
-├── vmf_npz.py                   # loader for vMF .npz files
-├── vmf_features.py              # feature extraction from P(t,k)
-├── vmf_dataset.py               # dataset construction
+├── README.md
+├── config.py
+├── data_index.py
+├── run_vmf_pipeline.py
+├── stageA_predict.py
+├── run_full_pvar_task.py
+│
+├── vmf_npz.py
+├── vmf_features.py
+├── vmf_dataset.py
+│
+├── eeg/
+│   ├── __init__.py
+│   ├── raw_eeg_npy.py
+│   ├── windowing.py
+│   ├── eeg_features.py
+│   ├── panel_dataset.py
+│   └── pvar_full_model.py
+│
 ├── notebooks/
-│   └── 00_vmf_results.ipynb     # visualization & reporting only
-├── outputs/                     # generated results
-├── legacy/                      # archived / unused code
-└── README.md
-```
+│   ├── 00_vmf_results.ipynb
+│   └── 10_stageB_results.ipynb
+│
+├── baselines/
+│   ├── stageB_build_panel.py
+│   └── stageB_predict_varx.py
+│
+└── outputs/
 
 ---
 
-## 6. How to run Stage A (recommended workflow)
+## 4. Stage A — vMF Time-Series Analysis
 
-Stage A is intentionally split into **two steps**:
-1. feature engineering  
-2. prediction & evaluation  
-
-### Step 1: Build subject-level features
-
-```bash
-python run_vmf_pipeline.py
-```
-
-This produces:
-
-```
-outputs/vmf_subject_features.csv
-```
-
-This file is **not a prediction** — it is a **feature-engineered dataset**.
-
----
-
-### Step 2: Run Stage A prediction
-
-```bash
+Run:
+python run_vmf_pipeline.py  
 python stageA_predict.py
-```
 
-This produces:
+Outputs:
+- outputs/vmf_subject_features.csv  
+- outputs/stageA_oof_predictions.csv  
 
-```
-outputs/stageA_metrics.csv
-outputs/stageA_oof_predictions.csv
-outputs/stageA_model_info.json
-```
+Notebook:
+- notebooks/00_vmf_results.ipynb
 
 ---
 
-### Step 3: Visualize results
+## 5. Stage B — Full Dynamic PVAR Model
 
-```bash
-jupyter notebook
-```
+Steps:
+1. python data_index.py  
+2. python run_full_pvar_task.py  
 
-Open:
+Outputs:
+- outputs/full_pvar_<TASK>_metrics.csv  
+- outputs/full_pvar_<TASK>_predictions.npz  
 
-```
-notebooks/00_vmf_results.ipynb
-```
-
-The notebook loads outputs and generates plots. It does not rerun the pipeline.
-
----
-
-## 7. Outputs (Stage A)
-
-All outputs live in:
-
-```
-outputs/
-```
-
-Key files:
-
-| File | Meaning |
-|----|--------|
-| `vmf_subject_features.csv` | Subject-level features |
-| `stageA_metrics.csv` | Cross-validated performance metrics |
-| `stageA_oof_predictions.csv` | Out-of-fold predictions |
-| `stageA_model_info.json` | Model configuration snapshot |
+Notebook:
+- notebooks/10_stageB_results.ipynb
 
 ---
 
-## 8. Interpretation of Stage A results
+## 6. Design Principles
 
-Stage A answers:
-
-> Does the temporal organization of latent EEG states carry cognitive information?
-
-Indicators of success:
-- positive out-of-sample R²  
-- meaningful true vs predicted plots  
-- interpretable associations  
+- separation of data, modeling, visualization  
+- reproducible experiments  
+- student-readable code  
 
 ---
 
-## 9. What Stage A is not
+## Final Note
 
-Stage A does **not**:
-- predict EEG time series  
-- estimate VAR coefficients  
-- infer connectivity  
-
-These belong to **Stage B**.
-
----
-
-## 10. Next stage (Stage B)
-
-Stage B introduces:
-- raw EEG time series  
-- VAR / VARX models  
-- latent factors  
-
-Stage A remains unchanged and reusable.
+This repository is a complete MVP implementation of a dynamic EEG PVAR model.

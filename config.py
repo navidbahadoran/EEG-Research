@@ -2,60 +2,44 @@
 # config.py
 # =========================
 # config.py
+# config.py
 from pathlib import Path
 
-# Public-safe alias paths (set these locally)
-VMF_DATA_DIR = Path(
-    r"D:/Navid/FSU/OneDrive - Florida State University/FSU/Courses/2025-2026/Spring/"
-    r"Sahar Research/EEG Data/data_for_navid"
-)          # contains vMF/ and raw/ and the CSV
-RAW_EEG_DIR  = VMF_DATA_DIR / "raw"            # *.npy
-VMF_DIR      = VMF_DATA_DIR / "vMF"            # *.npz
+# Public-safe alias for repo
+VMF_DATA_DIR = Path("<VMF_DATA_DIR>")  # set locally
+
+RAW_EEG_DIR  = VMF_DATA_DIR / "raw"
+VMF_DIR      = VMF_DATA_DIR / "vMF"
 VMF_CSV_PATH = VMF_DATA_DIR / "vmf_fixedmus_summary_K7.csv"
 
 OUTPUT_DIR   = Path("outputs")
 
-# Stage A settings
+# Data dimensions (from your example)
+G_CHANNELS = 32
 K_VMF = 7
 
-# Stage B settings (baseline)
-SFREQ_FALLBACK = 128.0         # only used if raw file has no metadata available
-WIN_SEC = 2.0                  # window length (seconds)
-STEP_SEC = 1.0                 # stride (seconds)
-
-# EEG bands (Hz) for bandpower features
-BANDS = {
-    "delta": (1.0, 4.0),
-    "theta": (4.0, 8.0),
-    "alpha": (8.0, 13.0),
-    "beta":  (13.0, 30.0),
-    "gamma": (30.0, 45.0),
-}
-
+# Modeling / estimation config
 RANDOM_SEED = 123
 
-# from pathlib import Path
+# Full model ranks (start small for stability)
+RF = 2   # rank of interactive effects f_t
+RG = 2   # rank of covariate-slope factors g_t
+RH = 2   # rank of dynamics factors h_t
 
-# # Folder containing BOTH:
-# #   - all vMF .npz files
-# #   - vmf_fixedmus_summary_K7.csv
-# DATA_DIR = Path(
-#     r"D:/Navid/FSU/OneDrive - Florida State University/FSU/Courses/2025-2026/Spring/"
-#     r"Sahar Research/EEG Data/data_for_navid"
-# )
+# Ridge penalties (tune later)
+LAM_D = 50.0      # penalty for D_i (A-loadings)
+LAM_C = 50.0      # penalty for C_i (B-loadings)
+LAM_L = 50.0      # penalty for Lambda_i
+LAM_F = 1.0       # penalty for factors f_t
+LAM_G = 1.0       # penalty for factors g_t
+LAM_H = 1.0       # penalty for factors h_t
 
-# CSV_NAME = "vmf_fixedmus_summary_K7.csv"
-# CSV_PATH = DATA_DIR / CSV_NAME
+MAX_ITER = 15
+TOL = 1e-4
 
-# # vMF mixture size
-# VMF_K = 7
+# Forecast / evaluation
+TRAIN_FRAC = 0.7
 
-# # Output folder (created automatically)
-# OUTPUT_DIR = Path("outputs")
-# OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+# Practical: downsample time to make estimation fast (set 1 to disable)
+TIME_STRIDE = 10   # e.g., 10 means use every 10th time point
 
-# RANDOM_SEED = 123
-# N_FOLDS = 5
-
-# # If true: use P[:, :K-1] when directly using P as regressors (simplex collinearity fix).
-# DROP_LAST_PROB_COL = True
