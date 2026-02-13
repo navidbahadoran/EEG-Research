@@ -35,11 +35,12 @@ This structure allows subject heterogeneity, regime changes, low-rank interpreta
 
 All data live outside the repository and are referenced through aliases in config.py.
 
+```text
 <VMF_DATA_DIR>/
 ├── raw/
 ├── vMF/
 └── vmf_fixedmus_summary_K7.csv
-
+```
 ---
 
 ## 3. Repository Structure
