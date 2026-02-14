@@ -116,11 +116,15 @@ All data live outside the repository and are referenced through aliases in confi
 ## 5. How to Run
 
 Stage A:
+
 python run_vmf_pipeline.py
+
 python stageA_predict.py
 
 Stage B:
+
 python data_index.py
+
 python run_full_pvar_all_tasks_parallel.py
 
 ---
