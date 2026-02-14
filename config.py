@@ -6,7 +6,7 @@
 from pathlib import Path
 
 # Public-safe alias for repo
-VMF_DATA_DIR = Path("<VMF_DATA_DIR>")  # set locally
+VMF_DATA_DIR = Path(r"D:/Navid/FSU/OneDrive - Florida State University/FSU/Courses/2025-2026/Spring/Sahar Research/EEG Data/data_for_navid")  # set locally
 
 RAW_EEG_DIR  = VMF_DATA_DIR / "raw"
 VMF_DIR      = VMF_DATA_DIR / "vMF"
@@ -22,9 +22,9 @@ K_VMF = 7
 RANDOM_SEED = 123
 
 # Full model ranks (start small for stability)
-RF = 2   # rank of interactive effects f_t
-RG = 2   # rank of covariate-slope factors g_t
-RH = 2   # rank of dynamics factors h_t
+RF = 3   # rank of interactive effects f_t
+RG = 3   # rank of covariate-slope factors g_t
+RH = 3   # rank of dynamics factors h_t
 
 # Ridge penalties (tune later)
 LAM_D = 50.0      # penalty for D_i (A-loadings)
@@ -41,5 +41,5 @@ TOL = 1e-4
 TRAIN_FRAC = 0.7
 
 # Practical: downsample time to make estimation fast (set 1 to disable)
-TIME_STRIDE = 10   # e.g., 10 means use every 10th time point
+TIME_STRIDE = 50   # e.g., 20 means use every 10th time point
 
