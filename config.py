@@ -41,5 +41,5 @@ TOL = 1e-4
 TRAIN_FRAC = 0.7
 
 # Practical: downsample time to make estimation fast (set 1 to disable)
-TIME_STRIDE = 50   # e.g., 20 means use every 10th time point
+TIME_STRIDE = 10   # e.g., 20 means use every 10th time point
 
