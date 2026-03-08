@@ -107,11 +107,12 @@ Thus the model contains three latent processes:
 All EEG and vMF data live outside the repository.
 
 Paths are configured in config.py.
-
+```
 VMF_DATA_DIR/
 ├── raw/ (raw EEG files)
 ├── vMF/ (vMF posterior probability .npz files)
 └── vmf_fixedmus_summary_K7.csv (metadata)
+```
 
 Each .npz file contains a matrix:
 
@@ -122,7 +123,7 @@ representing posterior probabilities of the seven latent states.
 ---
 
 # 4. Repository Structure
-
+```
 .
 ├── README.md
 ├── config.py
@@ -146,7 +147,7 @@ representing posterior probabilities of the seven latent states.
 │
 └── paper/
     Overleaf LaTeX manuscript
-
+```
 ---
 
 # 5. Core Modules
