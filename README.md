@@ -420,20 +420,6 @@ Based on the current results:
 
 ---
 
-## Archive policy
-
-Exploratory notebooks, superseded prototypes, and old scripts should be moved into:
-
-```text
-archive/
-```
-
-instead of being deleted immediately.
-
-This keeps the active repo clean while preserving project history.
-
----
-
 ## Author
 
 Navid Bahadoran  
