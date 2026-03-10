@@ -255,7 +255,7 @@ A useful intuition is:
 
 ---
 
-## Recommended preprocessing design
+## Preprocessing design
 
 The cleaned repository should use:
 
@@ -348,22 +348,22 @@ These metrics allow direct comparison across models.
 
 ---
 
-## Recommended single notebook
+## Presentation Notebook
 
-Instead of maintaining several partially overlapping notebooks, the repository should use one main notebook:
+The repository is using one main notebook:
 
 ```text
 notebooks/final_model_analysis.ipynb
 ```
 
-This notebook should:
+This notebook will:
 
 1. load all saved outputs,
 2. create the final model comparison table,
 3. produce all main figures,
 4. summarize the scientific interpretation.
 
-Recommended sections:
+Notebook sections:
 
 1. Data overview
 2. Baseline comparison
@@ -382,7 +382,7 @@ Recommended sections:
 
 ## Recommended figures for paper and presentation
 
-The final notebook should generate:
+The final notebook generates:
 
 ### Model comparison
 - final comparison table across all models
@@ -431,17 +431,6 @@ archive/
 instead of being deleted immediately.
 
 This keeps the active repo clean while preserving project history.
-
----
-
-## Suggested archive candidates
-
-Typical examples:
-
-- old exploratory notebooks,
-- `.ipynb_checkpoints`,
-- superseded helper modules,
-- obsolete prototype scripts no longer used by active runners.
 
 ---
 
