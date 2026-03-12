@@ -2,288 +2,425 @@
 
 ## Overview
 
-This repository studies **dynamic EEG brain-state probabilities** derived from directional features using econometric and machine learning models.
+This repository studies **dynamic EEG brain-state probabilities** derived from directional features using a sequence of econometric and machine learning models.
 
-The response variable is a **7‑dimensional probability vector of directional EEG states** obtained from a **von Mises–Fisher (vMF) mixture model**.
+The response variable throughout the project is a **7-dimensional probability vector of vMF brain states**.  
+The overall goal is to understand:
 
-The goal is to understand:
+- how EEG-derived brain states evolve over time,
+- whether those dynamics exhibit **regime switching**,
+- whether regimes are better modeled as **global** or **unit-specific**,
+- and which covariates explain transitions between brain states.
 
-* how EEG-derived brain states evolve over time,
-* whether those dynamics exhibit **regime switching**,
-* whether regimes are **global or unit‑specific**, and
-* which models best capture the temporal structure of EEG state probabilities.
+The repository implements a complete workflow:
 
-The repository implements a full research workflow:
+1. build directional EEG features and vMF state probabilities,
+2. construct pooled panel data,
+3. fit and compare dynamic models,
+4. interpret regimes, state interactions, and covariate effects,
+5. prepare figures and tables for papers and presentations.
 
-1. build directional EEG features and vMF state probabilities
-2. construct panel datasets
-3. estimate dynamic models
-4. compare model performance
-5. interpret regimes and state interactions
-6. produce figures for papers and presentations
+---
 
-\---
+## High-level modeling progression
 
-# Main Result
+The project compares several levels of dynamic complexity.
 
-Across all tested models, the best-performing specification is:
+### 1. Pooled factor-PVAR
+A pooled dynamic panel model with latent factors.
 
-### **Unit‑Specific Switching PVAR (Model B)**
+- Smooth dynamics
+- Shared across units
+- No regime switching
 
-Each unit follows its own regime path while **sharing regime‑specific dynamics across units**.
+### 2. Baseline models
+Simple reference models used for comparison.
 
-> EEG state dynamics are best described by \*\*unit‑specific switching among a small number of shared dynamic regimes\*\*.
+- Persistence baseline
+- Ridge VARX baseline
+- Markov transition baseline
+- Multinomial dominant-state classifier
 
-\---
+### 3. Global switching PVAR prototype
+A switching model with a **single regime path shared across all units**.
 
-# Repository Structure
+### 4. Option A: Switching factor-PVAR
+A global switching model augmented with latent factors.
+
+### 5. Option B: Unit-specific switching PVAR
+A switching model where **each unit has its own regime path**, while regime-specific coefficients are shared across units.
+
+This is currently the **best-performing model**.
+
+### 6. Option C: SLDS-style panel prototype
+A latent continuous-state model with switching dynamics, used to test whether low-dimensional latent compression improves over direct state switching.
+
+---
+
+## Main empirical conclusion so far
+
+Across the tested models:
+
+- pooled smooth models capture average dynamics but miss heterogeneity,
+- global switching models improve flexibility,
+- **unit-specific switching models perform best**,
+- low-dimensional SLDS-style compression does not outperform direct unit-specific switching.
+
+In short:
+
+> EEG state dynamics are best described by **unit-specific switching among a small number of shared dynamic regimes**, rather than by a single global regime path or a strongly compressed latent dynamical system.
+
+---
+
+## Repository structure
 
 ```text
-
-repo\_root/
-
+repo_root/
 │
-
 ├── README.md
-
 ├── config.py
-
-├── data\_index.py
-
+├── data_index.py
 │
-
 ├── eeg/
-
 │   Core model implementations
-
 │
-
-│   ├── \_\_init\_\_.py
-
-│   ├── pvar\_full\_model\_parallel\_adaptive.py
-
-│   ├── vmf\_baselines.py
-
-│   ├── switching\_pvar.py
-
-│   ├── switching\_factor\_pvar.py
-
-│   ├── unit\_switching\_pvar.py
-
-│   └── slds\_panel.py
-
+│   ├── __init__.py
+│   ├── pvar_full_model_parallel_adaptive.py
+│   ├── vmf_baselines.py
+│   ├── switching_pvar.py
+│   ├── switching_factor_pvar.py
+│   ├── unit_switching_pvar.py
+│   └── slds_panel.py
 │
-
 ├── vmf/
-
 │   Feature construction and panel building
-
 │
-
-│   ├── vmf\_features.py
-
-│   ├── vmf\_panel\_builder.py
-
-│   └── vmf\_panel\_builder\_pooled.py
-
+│   ├── vmf_features.py
+│   ├── vmf_panel_builder.py
+│   └── vmf_panel_builder_pooled.py
 │
-
 ├── scripts/
-
 │   Model runners and shared utilities
-
 │
-
-│   ├── model\_common.py
-
-│   ├── run\_vmf\_factor\_pvar\_pooled\_runner.py
-
-│   ├── run\_vmf\_baselines.py
-
-│   ├── run\_switching\_pvar\_prototype.py
-
-│   ├── run\_switching\_factor\_pvar.py
-
-│   ├── run\_unit\_switching\_pvar.py
-
-│   └── run\_slds\_panel\_prototype.py
-
+│   ├── model_common.py
+│   ├── run_vmf_factor_pvar_pooled_runner.py
+│   ├── run_vmf_baselines.py
+│   ├── run_switching_pvar_prototype.py
+│   ├── run_switching_factor_pvar.py
+│   ├── run_unit_switching_pvar.py
+│   └── run_slds_panel_prototype.py
 │
-
 ├── notebooks/
-
 │   Analysis, diagnostics, and presentation notebook(s)
-
 │
-
-│   └── final\_model\_analysis.ipynb
-
+│   └── final_model_analysis.ipynb
 │
-
 ├── outputs/
-
 │   Saved artifacts and metrics
-
 │
-
 └── archive/
-
-&#x20;   Old notebooks, prototypes, and superseded scripts
-
+    Old notebooks, prototypes, and superseded scripts
 ```
 
-\---
+---
 
-# Modeling Progression
+## What each active file does
 
-1. **Pooled Factor‑PVAR**  
-Smooth dynamic panel model with latent factors.
-2. **Baseline Models**
+## `eeg/`
 
-   * Persistence
-   * Ridge VARX
-   * Markov transition
-   * Multinomial classifier
-3. **Global Switching PVAR**
-Single regime path shared across all units.
-4. **Switching Factor‑PVAR (Option A)**
-Global switching with latent factors.
-5. **Unit‑Specific Switching PVAR (Option B)**  
-Each unit has its own regime path.  
-**Best performing model.**
-6. **SLDS Panel Prototype (Option C)**
-Switching linear dynamical system with latent compression.
+### `pvar_full_model_parallel_adaptive.py`
+Main pooled factor-PVAR model.
 
-\---
+### `vmf_baselines.py`
+Baseline models used for comparison.
 
-# Data Representation
+### `switching_pvar.py`
+Prototype global switching VARX model.
 
-For unit i and time t:
+### `switching_factor_pvar.py`
+Option A: switching factor-PVAR.
 
-y\_it = (p\_it1, ..., p\_it7)
+### `unit_switching_pvar.py`
+Option B: unit-specific switching PVAR.
 
-This represents the probability distribution over **7 EEG directional states**.
+### `slds_panel.py`
+Option C: SLDS-style latent switching panel model.
 
-Typical dataset dimensions:
+---
 
-Units ≈ 302  
-Time windows ≈ 1761  
-States = 7  
-Covariates ≈ 65
+## `vmf/`
 
-\---
+### `vmf_features.py`
+Builds and processes directional EEG features.
 
-# States vs Regimes
+### `vmf_panel_builder.py`
+General panel construction utilities.
 
-Important distinction:
+### `vmf_panel_builder_pooled.py`
+Main pooled panel builder used in the current workflow.
 
-**EEG states (7)**  
-Instantaneous vMF probability states.
+---
 
-**Dynamic regimes (3)**  
-Latent contexts governing how those probabilities evolve.
+## `scripts/`
 
-Thus:
+### `model_common.py`
+Shared utilities for:
+- loading the panel,
+- train-only standardization,
+- saving metrics,
+- common scoring helpers.
 
-states = instantaneous configuration  
-regimes = dynamic laws governing transitions
+### `run_vmf_factor_pvar_pooled_runner.py`
+Runs the pooled factor-PVAR model.
 
-\---
+### `run_vmf_baselines.py`
+Runs all baseline models and writes a baseline comparison table.
 
-# Running the Models
+### `run_switching_pvar_prototype.py`
+Runs the global switching PVAR prototype.
 
-Recommended order:
+### `run_switching_factor_pvar.py`
+Runs Option A.
 
-Pooled factor‑PVAR
+### `run_unit_switching_pvar.py`
+Runs Option B.
 
-python scripts/run\_vmf\_factor\_pvar\_pooled\_runner.py
+### `run_slds_panel_prototype.py`
+Runs Option C.
 
-Baselines
+---
 
-python scripts/run\_vmf\_baselines.py
+## Data representation
 
-Global switching prototype
+For each unit \(i\) and time \(t\), the response is a 7-dimensional state probability vector
 
-python scripts/run\_switching\_pvar\_prototype.py
+\[
+y_{i,t} = (p_{i,t,1}, \dots, p_{i,t,7})
+\]
 
-Switching factor‑PVAR
+with entries summing to one.
 
-python scripts/run\_switching\_factor\_pvar.py
+The panel has the form:
 
-Unit‑specific switching PVAR
+- \(N\) units
+- \(T\) time points
+- \(G = 7\) response dimensions
+- \(p \approx 65\) covariates
 
-python scripts/run\_unit\_switching\_pvar.py
+Typical full-sample dimensions in the current project are approximately:
 
-SLDS prototype
+- \(N \approx 302\)
+- \(T \approx 5870\)
+- \(G = 7\)
+- \(p = 65\)
 
-python scripts/run\_slds\_panel\_prototype.py
+---
 
-\---
+## Covariates
 
-# Outputs
+The covariates typically include:
 
-All model outputs are stored in
+- entropy,
+- switching-rate summaries,
+- volatility summaries,
+- occupancy summaries,
+- transition summaries,
+- task indicators,
+- subject-level covariates such as age and sex.
 
+These enter the models through covariate coefficient blocks \(B_k\).
+
+---
+
+## Why there are 3 regimes but 7 states
+
+A common source of confusion is the distinction between **brain states** and **dynamic regimes**.
+
+### The 7 states
+These are the instantaneous vMF probability states.
+
+### The 3 regimes
+These are **dynamic contexts** that govern how the 7 states evolve over time.
+
+So the model is **not** replacing 7 states with 3 states.  
+Instead, it is saying:
+
+- the observed brain state probabilities still live in 7 dimensions,
+- but the **rules of motion** for those 7 probabilities change across 3 regimes.
+
+A useful intuition is:
+
+- **states** = instantaneous configurations,
+- **regimes** = dynamic laws governing transitions between configurations.
+
+---
+
+## Preprocessing design
+
+The cleaned repository should use:
+
+- `load_panel_data()` for **raw panel loading only**
+- `standardize_from_train()` for **train-only covariate standardization**
+
+That means runners should:
+
+1. load raw `Y_list`, `X_list`,
+2. compute `train_end`,
+3. standardize `X_list` using training periods only,
+4. fit the model.
+
+This avoids leakage and keeps preprocessing consistent across models.
+
+---
+
+## How to run the code
+
+Recommended run order:
+
+### 1. Pooled factor-PVAR
+```bash
+python scripts/run_vmf_factor_pvar_pooled_runner.py
+```
+
+### 2. Baselines
+```bash
+python scripts/run_vmf_baselines.py
+```
+
+### 3. Global switching PVAR prototype
+```bash
+python scripts/run_switching_pvar_prototype.py
+```
+
+### 4. Option A: Switching factor-PVAR
+```bash
+python scripts/run_switching_factor_pvar.py
+```
+
+### 5. Option B: Unit-specific switching PVAR
+```bash
+python scripts/run_unit_switching_pvar.py
+```
+
+### 6. Option C: SLDS-style panel prototype
+```bash
+python scripts/run_slds_panel_prototype.py
+```
+
+---
+
+## Outputs
+
+All outputs are saved under:
+
+```text
 outputs/
+```
 
-Typical files:
+Typical files include:
 
-\*\_metrics.csv  
-\*\_artifacts.npz
+- `*_metrics.csv`
+- `*_artifacts.npz`
 
-Example prefixes:
+Suggested artifact naming prefixes:
 
-vmf\_pvar\_pooled\_\*  
-baseline\_\*  
-switching\_pvar\_k3\_\*  
-switching\_factor\_pvar\_k3\_\*  
-unit\_switching\_pvar\_k3\_\*  
-slds\_panel\_k3\_\*
+- `vmf_pvar_pooled_*`
+- `baseline_*`
+- `switching_pvar_k3_*`
+- `switching_factor_pvar_k3_*`
+- `unit_switching_pvar_k3_*`
+- `slds_panel_k3_r3_*`
 
-\---
+---
 
-# Evaluation Metrics
+## Key metrics reported
 
-Models are compared using:
+Each model typically reports:
 
-MSE  
-RMSE  
-R²  
-dominant‑state accuracy  
-KL divergence  
-cross entropy
+- MSE
+- RMSE
+- \(R^2\)
+- dominant-state accuracy
+- KL divergence
+- cross-entropy
 
-\---
+These metrics allow direct comparison across models.
 
-# Analysis Notebook
+---
 
-Main notebook:
+## Presentation Notebook
 
-notebooks/final\_model\_analysis.ipynb
+The repository is using one main notebook:
 
-The notebook:
+```text
+notebooks/final_model_analysis.ipynb
+```
 
-1. loads saved outputs
-2. builds the model comparison table
-3. generates regime diagnostics
-4. produces figures used in the paper and poster
+This notebook will:
 
-\---
+1. load all saved outputs,
+2. create the final model comparison table,
+3. produce all main figures,
+4. summarize the scientific interpretation.
 
-# Key Figures
+Notebook sections:
 
-Model comparison table  
-Regime usage shares  
-Transition matrix  
-Regime‑state interaction heatmap  
-Switching heterogeneity across units  
-Prediction confusion matrix
+1. Data overview
+2. Baseline comparison
+3. Pooled factor-PVAR results
+4. Switching prototype results
+5. Option A results
+6. Option B results
+7. Option C results
+8. Regime diagnostics
+9. Covariate importance
+10. Brain-state interaction networks
+11. Switching heterogeneity across units
+12. Final takeaway slide/table
 
-\---
+---
 
-# Author
+## Recommended figures for paper and presentation
+
+The final notebook generates:
+
+### Model comparison
+- final comparison table across all models
+
+### Regime diagnostics
+- regime usage shares
+- regime probabilities over time
+- transition matrices
+
+### Dynamics
+- regime-specific \(A_k\) heatmaps
+- regime-specific covariate importance
+
+### Prediction quality
+- confusion matrix of true vs predicted dominant state
+- state recall
+
+### Scientific interpretation
+- regime-specific brain-state interaction networks
+- switching frequency across units
+- regime entropy across units
+- unit × time dominant-regime heatmap
+
+---
+
+## Current model ranking
+
+Based on the current results:
+
+1. **Option B — Unit-specific switching PVAR**  
+2. Option A — Switching factor-PVAR  
+3. Option C — SLDS-style panel prototype  
+4. Global switching prototype  
+5. Pooled factor-PVAR / baselines
+
+---
+
+## Author
 
 Navid Bahadoran  
-Department of Mathematics  
 Florida State University
-
