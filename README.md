@@ -1,4 +1,3 @@
-
 # EEG Dynamic Regime Modeling with vMF State Probabilities
 
 ## Overview
@@ -9,10 +8,10 @@ The response variable is a **7‑dimensional probability vector of directional E
 
 The goal is to understand:
 
-- how EEG-derived brain states evolve over time,
-- whether those dynamics exhibit **regime switching**,
-- whether regimes are **global or unit‑specific**, and
-- which models best capture the temporal structure of EEG state probabilities.
+* how EEG-derived brain states evolve over time,
+* whether those dynamics exhibit **regime switching**,
+* whether regimes are **global or unit‑specific**, and
+* which models best capture the temporal structure of EEG state probabilities.
 
 The repository implements a full research workflow:
 
@@ -23,7 +22,7 @@ The repository implements a full research workflow:
 5. interpret regimes and state interactions
 6. produce figures for papers and presentations
 
----
+\---
 
 # Main Result
 
@@ -33,88 +32,135 @@ Across all tested models, the best-performing specification is:
 
 Each unit follows its own regime path while **sharing regime‑specific dynamics across units**.
 
-> EEG state dynamics are best described by **unit‑specific switching among a small number of shared dynamic regimes**.
+> EEG state dynamics are best described by \*\*unit‑specific switching among a small number of shared dynamic regimes\*\*.
 
----
+\---
 
 # Repository Structure
 
-repo_root/
+```text
 
-README.md  
-config.py  
-data_index.py  
+repo\_root/
 
-eeg/  
-    Core model implementations
+│
 
-    pvar_full_model_parallel_adaptive.py  
-    vmf_baselines.py  
-    switching_pvar.py  
-    switching_factor_pvar.py  
-    unit_switching_pvar.py  
-    slds_panel.py  
+├── README.md
 
-vmf/  
-    Feature construction and panel building
+├── config.py
 
-    vmf_features.py  
-    vmf_panel_builder.py  
-    vmf_panel_builder_pooled.py  
+├── data\_index.py
 
-scripts/  
-    Model runners
+│
 
-    model_common.py  
-    run_vmf_factor_pvar_pooled_runner.py  
-    run_vmf_baselines.py  
-    run_switching_pvar_prototype.py  
-    run_switching_factor_pvar.py  
-    run_unit_switching_pvar.py  
-    run_slds_panel_prototype.py  
+├── eeg/
 
-notebooks/  
-    final_model_analysis.ipynb
+│   Core model implementations
 
-outputs/  
-    saved artifacts and metrics
+│
 
-archive/  
-    earlier experiments and prototypes
+│   ├── \_\_init\_\_.py
 
----
+│   ├── pvar\_full\_model\_parallel\_adaptive.py
+
+│   ├── vmf\_baselines.py
+
+│   ├── switching\_pvar.py
+
+│   ├── switching\_factor\_pvar.py
+
+│   ├── unit\_switching\_pvar.py
+
+│   └── slds\_panel.py
+
+│
+
+├── vmf/
+
+│   Feature construction and panel building
+
+│
+
+│   ├── vmf\_features.py
+
+│   ├── vmf\_panel\_builder.py
+
+│   └── vmf\_panel\_builder\_pooled.py
+
+│
+
+├── scripts/
+
+│   Model runners and shared utilities
+
+│
+
+│   ├── model\_common.py
+
+│   ├── run\_vmf\_factor\_pvar\_pooled\_runner.py
+
+│   ├── run\_vmf\_baselines.py
+
+│   ├── run\_switching\_pvar\_prototype.py
+
+│   ├── run\_switching\_factor\_pvar.py
+
+│   ├── run\_unit\_switching\_pvar.py
+
+│   └── run\_slds\_panel\_prototype.py
+
+│
+
+├── notebooks/
+
+│   Analysis, diagnostics, and presentation notebook(s)
+
+│
+
+│   └── final\_model\_analysis.ipynb
+
+│
+
+├── outputs/
+
+│   Saved artifacts and metrics
+
+│
+
+└── archive/
+
+&#x20;   Old notebooks, prototypes, and superseded scripts
+
+```
+
+\---
 
 # Modeling Progression
 
 1. **Pooled Factor‑PVAR**  
-   Smooth dynamic panel model with latent factors.
-
+Smooth dynamic panel model with latent factors.
 2. **Baseline Models**
-   - Persistence
-   - Ridge VARX
-   - Markov transition
-   - Multinomial classifier
 
+   * Persistence
+   * Ridge VARX
+   * Markov transition
+   * Multinomial classifier
 3. **Global Switching PVAR**
-   Single regime path shared across all units.
-
+Single regime path shared across all units.
 4. **Switching Factor‑PVAR (Option A)**
-   Global switching with latent factors.
-
+Global switching with latent factors.
 5. **Unit‑Specific Switching PVAR (Option B)**  
-   Each unit has its own regime path.  
-   **Best performing model.**
-
+Each unit has its own regime path.  
+**Best performing model.**
 6. **SLDS Panel Prototype (Option C)**
-   Switching linear dynamical system with latent compression.
+Switching linear dynamical system with latent compression.
 
----
+\---
 
 # Data Representation
 
 For unit i and time t:
 
-y_it = (p_it1, ..., p_it7)
+y\_it = (p\_it1, ..., p\_it7)
 
 This represents the probability distribution over **7 EEG directional states**.
 
@@ -125,7 +171,7 @@ Time windows ≈ 1761
 States = 7  
 Covariates ≈ 65
 
----
+\---
 
 # States vs Regimes
 
@@ -142,7 +188,7 @@ Thus:
 states = instantaneous configuration  
 regimes = dynamic laws governing transitions
 
----
+\---
 
 # Running the Models
 
@@ -150,29 +196,29 @@ Recommended order:
 
 Pooled factor‑PVAR
 
-python scripts/run_vmf_factor_pvar_pooled_runner.py
+python scripts/run\_vmf\_factor\_pvar\_pooled\_runner.py
 
 Baselines
 
-python scripts/run_vmf_baselines.py
+python scripts/run\_vmf\_baselines.py
 
 Global switching prototype
 
-python scripts/run_switching_pvar_prototype.py
+python scripts/run\_switching\_pvar\_prototype.py
 
 Switching factor‑PVAR
 
-python scripts/run_switching_factor_pvar.py
+python scripts/run\_switching\_factor\_pvar.py
 
 Unit‑specific switching PVAR
 
-python scripts/run_unit_switching_pvar.py
+python scripts/run\_unit\_switching\_pvar.py
 
 SLDS prototype
 
-python scripts/run_slds_panel_prototype.py
+python scripts/run\_slds\_panel\_prototype.py
 
----
+\---
 
 # Outputs
 
@@ -182,19 +228,19 @@ outputs/
 
 Typical files:
 
-*_metrics.csv  
-*_artifacts.npz
+\*\_metrics.csv  
+\*\_artifacts.npz
 
 Example prefixes:
 
-vmf_pvar_pooled_*  
-baseline_*  
-switching_pvar_k3_*  
-switching_factor_pvar_k3_*  
-unit_switching_pvar_k3_*  
-slds_panel_k3_*
+vmf\_pvar\_pooled\_\*  
+baseline\_\*  
+switching\_pvar\_k3\_\*  
+switching\_factor\_pvar\_k3\_\*  
+unit\_switching\_pvar\_k3\_\*  
+slds\_panel\_k3\_\*
 
----
+\---
 
 # Evaluation Metrics
 
@@ -207,13 +253,13 @@ dominant‑state accuracy
 KL divergence  
 cross entropy
 
----
+\---
 
 # Analysis Notebook
 
 Main notebook:
 
-notebooks/final_model_analysis.ipynb
+notebooks/final\_model\_analysis.ipynb
 
 The notebook:
 
@@ -222,7 +268,7 @@ The notebook:
 3. generates regime diagnostics
 4. produces figures used in the paper and poster
 
----
+\---
 
 # Key Figures
 
@@ -233,10 +279,11 @@ Regime‑state interaction heatmap
 Switching heterogeneity across units  
 Prediction confusion matrix
 
----
+\---
 
 # Author
 
 Navid Bahadoran  
 Department of Mathematics  
 Florida State University
+
